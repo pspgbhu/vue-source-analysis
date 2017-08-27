@@ -54,6 +54,7 @@ export function withoutConversion (fn) {
 
  /**
   * 在 init data 阶段第一次传入的时候，value 是 data
+  *
   * 若 data 中有数组元素，且数组包含数组项或者对象项时会再次递归的实例化 Observer 类。
   */
 
@@ -65,10 +66,14 @@ export function Observer (value) {
   // configurable: true
   def(value, '__ob__', this)
   if (isArray(value)) {
+
+    // 对于数组内部的改变 setter 是无法检测到的。所以这里讲改造了 data 内的数组
+    // 将数组的七种变异方法全部改写，使其可以调用时可以通告发布变动。
     var augment = hasProto
       ? protoAugment
       : copyAugment
     augment(value, arrayMethods, arrayKeys)
+
     // 迭代 array，并为 array 的每一项调用 observer，如果子项是对象或者是数组，则继续新建 Observer 实例进行递归处理。
     this.observeArray(value)
   } else {
@@ -110,7 +115,7 @@ Observer.prototype.walk = function (obj) {
  */
 
 /**
- * 迭代数组，并观察数组中的每一项
+ * 遍历数组，并观察数组中的每一项
  * 在 observer 函数中，为 item[i] 创建新的 Observer 实例，
  */
 Observer.prototype.observeArray = function (items) {
@@ -133,6 +138,8 @@ Observer.prototype.observeArray = function (items) {
   */
 
 Observer.prototype.convert = function (key, val) {
+  // this.value 是 obverser 实例
+  // key 和 val 就是 this.value 对象下的 key 和 value
   defineReactive(this.value, key, val)
 }
 
@@ -209,7 +216,7 @@ function copyAugment (target, src, keys) {
  */
 
 export function observe (value, vm) {
-  // 先进行安全检查
+  // 若是基本类型值，则不需要对其进行改造。
   if (!value || typeof value !== 'object') {
     return
   }
@@ -254,16 +261,17 @@ export function observe (value, vm) {
 export function defineReactive (obj, key, val) {
   var dep = new Dep()
 
-  var property = Object.getOwnPropertyDescriptor(obj, key) // 获取一个对象属性的描述符
+  // 获取一个对象属性的描述符
+  var property = Object.getOwnPropertyDescriptor(obj, key)
   // 当且仅当该属性的 configurable 为 true 时，
-  // 该属性描述符才能够被改变，同时该属性也能从对应的对象上被删除。默认为 false。
+  // 该属性描述符为 true 时，该属diaoyuong性才能够被改变，同时该属性也能从对应的对象上被删除。默认为 false。
   // 通过 def 函数定义属性的 configurable 值均为 true
   if (property && property.configurable === false) {
     return
   }
 
   // cater for pre-defined getter/setters
-  // 读取 value 的 get 和 set 属性。
+  // 短路计算，直接取了 property.get/set 当然，property.get/set 有可能是 undefined
   var getter = property && property.get
   var setter = property && property.set
 
@@ -273,9 +281,12 @@ export function defineReactive (obj, key, val) {
     enumerable: true,   // 当且仅当该属性的 enumerable 为 true 时，该属性才能够出现在对象的枚举属性中。
     configurable: true,   // 当且仅当该属性的 configurable 为 true 时，该属性描述符才能够被改变，也能够被删除。
     get: function reactiveGetter () {
-      // TODO: 搞清楚这个 getter.call(obj)返回的是什么
 
+      // 如果上面的 getter 存在的话，直接读取 getter 的返回值。否则直接取 val
+      // 也就是直接拿的属性值的 value ^_^
       var value = getter ? getter.call(obj) : val
+
+      // 目前还不知道哪里为 Dep.target 赋值
       if (Dep.target) {
         dep.depend()
         if (childOb) {
@@ -300,7 +311,9 @@ export function defineReactive (obj, key, val) {
       } else {
         val = newVal
       }
+      // observe 新的值，如果新值是对象或者数组，就又是一轮改造
       childOb = observe(newVal)
+      // 注意啦，这里　notify 了
       dep.notify()
     }
   })

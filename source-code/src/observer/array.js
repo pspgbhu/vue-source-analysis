@@ -6,7 +6,9 @@ export const arrayMethods = Object.create(arrayProto)
 /**
  * Intercept mutating methods and emit events
  */
-
+/**
+ * 重写了数组以下的几种方法，使调用下列方法时可以检测到数组的变化。
+ */
 ;[
   'push',
   'pop',
@@ -30,6 +32,7 @@ export const arrayMethods = Object.create(arrayProto)
     var result = original.apply(this, args)
     var ob = this.__ob__
     var inserted
+    // 下面这三种方法都会添加值进数组
     switch (method) {
       case 'push':
         inserted = args
@@ -41,6 +44,7 @@ export const arrayMethods = Object.create(arrayProto)
         inserted = args.slice(2)
         break
     }
+    // 要对添加进的值进行新一轮的　observe
     if (inserted) ob.observeArray(inserted)
     // notify change
     ob.dep.notify()

@@ -121,9 +121,7 @@ export default function (Vue) {
       // 1. it's not already defined as a prop
       // 2. it's provided via a instantiation option AND there are no
       //    template prop present
-      // 在以下两种情境下，我们能够去代理一个 data key：
-      // 1. 没有已经被定义在 props 上
-      // 2. 提供了实例化选项，并且没有现有的模版 prop 存在（没太懂啥意思）
+      // 基本上意思是 data 中的 key 若沒有和 props 冲突，则对该属性进行代理
       if (!props || !hasOwn(props, key)) {
         // this._proxy(key) 是将 this._data.property 属性代理到 this.property 下
         // 这样，我们就可以直接通过 this.property 拿到 this._data.property 的值了。
